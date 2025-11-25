@@ -28,6 +28,13 @@ namespace skullbeam
 
     public class SkullBeamHUD : MonoBehaviour
     {
+        // ───────────── 해골 위치 (랜덤) ─────────────
+        private const float SKULL_WIDTH = 96f;
+        private const float SKULL_HEIGHT = 96f;
+
+        private float _skullPosX = -1f; // 해골 좌상단 X (GUI 좌표)
+        private float _skullPosY = -1f; // 해골 좌상단 Y
+
         private static readonly BindingFlags BINDING_FLAGS =
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
@@ -62,6 +69,7 @@ namespace skullbeam
         private bool _hasTarget = false;
         private float _plannedTotalDamage = 0f; // MaxHP / 3
         private float _appliedDamage = 0f; // 누적
+        private float _startHealth;
 
         private void Awake()
         {
@@ -158,11 +166,37 @@ namespace skullbeam
             _targetHealth = null;
             _plannedTotalDamage = 0f;
             _appliedDamage = 0f;
+            _startHealth = 0f;
+
+            // ───────── 해골 UI 위치를 랜덤으로 결정 ─────────
+            try
+            {
+                float margin = 80f; // 화면 끝에서 여유
+                float minX = margin;
+                float maxX = Screen.width - margin - SKULL_WIDTH;
+                float minY = margin;
+                float maxY = Screen.height - margin - SKULL_HEIGHT;
+
+                if (maxX < minX) { maxX = minX; }
+                if (maxY < minY) { maxY = minY; }
+
+                _skullPosX = UnityEngine.Random.Range(minX, maxX);
+                _skullPosY = UnityEngine.Random.Range(minY, maxY);
+            }
+            catch (Exception ex)
+            {
+                Debug.Log("[skullbeam] 랜덤 해골 위치 계산 예외: " + ex);
+                // 실패하면 예전처럼 화면 위 가운데
+                _skullPosX = -1f;
+                _skullPosY = -1f;
+            }
+            // ────────────────────────────────────────────────
 
             PlayBeamStartSound();
 
             Debug.Log("[skullbeam] TriggerBeam 발동");
         }
+
 
         // ───────────── 텍스처 로드 ─────────────
 
@@ -717,14 +751,29 @@ namespace skullbeam
 
             EnsureTexturesLoaded();
 
-            float skullW = 96f;
-            float skullH = 96f;
-            float centerX = Screen.width * 0.5f;
-            float skullX = centerX - skullW * 0.5f;
-            float skullY = 20f;
+            float skullW = SKULL_WIDTH;
+            float skullH = SKULL_HEIGHT;
 
+            // 트리거에서 랜덤 좌표를 못 정했으면(초기값) 예전처럼 화면 위 가운데 사용
+            float skullX;
+            float skullY;
+
+            if (_skullPosX < 0f || _skullPosY < 0f)
+            {
+                skullX = Screen.width * 0.5f - skullW * 0.5f;
+                skullY = 20f;
+            }
+            else
+            {
+                skullX = _skullPosX;
+                skullY = _skullPosY;
+            }
+
+            // 해골 중심 기준
+            float centerX = skullX + skullW * 0.5f;
             float beamStartY = skullY + skullH * 0.6f;
             Vector2 pivotGui = new Vector2(centerX, beamStartY);
+
 
             // GUI 좌표계 기준 마우스 위치 (y 뒤집기)
             Vector2 mouseGui = new Vector2(
